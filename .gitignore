@@ -1,1 +1,4 @@
+/.vscode
+/build
 /gc-esp32/credentials.h
+geiger-counter.code-workspace
