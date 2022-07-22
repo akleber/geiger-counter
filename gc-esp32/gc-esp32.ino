@@ -49,8 +49,8 @@ SSD1306 display(0x3c, 5, 4);
 
 const int inputPin = 26;
 
-int counts_cpm = 0; // Tube events
-int counts_cph = 0;
+int counter_cpm = 0; // Tube events
+int counter_cph = 0;
 int cpm = 0;                 // CPM
 unsigned long lastCountTime; // Time measurement
 unsigned long lastEntryThingspeak;
@@ -59,8 +59,8 @@ unsigned long startEntryThingspeak;
 
 void IRAM_ATTR ISR_impulse()
 { // Captures count of events from Geiger counter board
-    counts_cpm++;
-    counts_cph++;
+    counter_cpm++;
+    counter_cph++;
 }
 
 void displayInit()
@@ -198,11 +198,11 @@ void loop()
 
     if (millis() - lastCountTime > (PERIOD_LOG * 1000))
     {
-        printSerial("counts_cpm: ");
-        printlnSerial(String(counts_cpm));
+        printSerial("counter_cpm: ");
+        printlnSerial(String(counter_cpm));
 
-        cpm = (60000 * counts_cpm) / (millis() - startCountTime);
-        counts_cpm = 0;
+        cpm = (60000 * counter_cpm) / (millis() - startCountTime);
+        counter_cpm = 0;
         startCountTime = millis();
         lastCountTime += PERIOD_LOG * 1000;
 
@@ -228,10 +228,10 @@ void loop()
     /*
     if (millis() - lastEntryThingspeak > (PERIOD_THINKSPEAK * 1000))
     {
-        printSerial("counts_cph: ");
-        printlnSerial(String(counts_cph));
+        printSerial("counter_cph: ");
+        printlnSerial(String(counter_cph));
 
-        int averageCPH = (int)(((float)3600000 * (float)counts_cph) / (float)(millis() - startEntryThingspeak));
+        int averageCPH = (int)(((float)3600000 * (float)counter_cph) / (float)(millis() - startEntryThingspeak));
 
         printSerial("Average cph: ");
         printlnSerial(String(averageCPH));
@@ -239,7 +239,7 @@ void loop()
         // postThingspeak(averageCPH);
         lastEntryThingspeak += PERIOD_THINKSPEAK * 1000;
         startEntryThingspeak = millis();
-        counts_cph = 0;
+        counter_cph = 0;
     };
     */
 
