@@ -18,7 +18,7 @@
   Please use freely with attribution. Thank you!
 */
 
-#define Version "V1.0.0"
+#define Version "V1.1.0"
 #define CONS
 #define WIFI
 #ifdef CONS
@@ -28,6 +28,11 @@
 #include "credentials.h"
 // #define mySSID ""
 // #define myPASSWORD ""
+// #define MQTT_HOST "mosquitto"
+// #define MQTT_CLIENTID "geiger1"
+// #define MQTT_TOPIC_STATUS "geiger/status"
+// #define MQTT_TOPIC_CPM "geiger/cpm"
+// #define MQTT_TOPIC_CPH "geiger/cph"
 
 #ifdef WIFI
 #include <WiFi.h>
@@ -43,19 +48,18 @@ SSD1306 display(0x3c, 5, 4);
 #include <esp_task_wdt.h>
 
 #define WIFI_TIMEOUT_DEF 30
-#define PERIOD_LOG 15          // Logging period
-#define PERIOD_THINKSPEAK 3600 // in seconds, >60
+#define PERIOD_CPM 15   // Logging period
+#define PERIOD_CPH 3600 // in seconds, >60
 #define WDT_TIMEOUT 10
 
 const int inputPin = 26;
 
 int counter_cpm = 0; // Tube events
 int counter_cph = 0;
-int cpm = 0;                 // CPM
-unsigned long lastCountTime; // Time measurement
-unsigned long lastEntryThingspeak;
-unsigned long startCountTime; // Time measurement
-unsigned long startEntryThingspeak;
+unsigned long lastEntryCPM; // Time measurement
+unsigned long lastEntryCPH;
+unsigned long startEntryCPM; // Time measurement
+unsigned long startEntryCPH;
 
 void IRAM_ATTR ISR_impulse()
 { // Captures count of events from Geiger counter board
@@ -183,8 +187,8 @@ void setup()
     attachInterrupt(digitalPinToInterrupt(inputPin), ISR_impulse, FALLING); // Define interrupt on falling edge
     Serial.println("Irq installed");
 
-    startEntryThingspeak = lastEntryThingspeak = millis();
-    startCountTime = lastCountTime = millis();
+    startEntryCPH = lastEntryCPH = millis();
+    startEntryCPM = lastEntryCPM = millis();
     printlnSerial("Initialized");
 }
 
@@ -196,15 +200,15 @@ void loop()
         software_Reset();
 #endif
 
-    if (millis() - lastCountTime > (PERIOD_LOG * 1000))
+    if (millis() - lastEntryCPM > (PERIOD_CPM * 1000))
     {
         printSerial("counter_cpm: ");
         printlnSerial(String(counter_cpm));
 
-        cpm = (60000 * counter_cpm) / (millis() - startCountTime);
+        int cpm = (60000 * counter_cpm) / (millis() - startEntryCPM);
         counter_cpm = 0;
-        startCountTime = millis();
-        lastCountTime += PERIOD_LOG * 1000;
+        startEntryCPM = millis();
+        lastEntryCPM += PERIOD_CPM * 1000;
 
         // display
         display.clear();
@@ -225,23 +229,27 @@ void loop()
         // printStack();
     }
 
-    /*
-    if (millis() - lastEntryThingspeak > (PERIOD_THINKSPEAK * 1000))
+    if (millis() - lastEntryCPH > (PERIOD_CPH * 1000))
     {
         printSerial("counter_cph: ");
         printlnSerial(String(counter_cph));
 
-        int averageCPH = (int)(((float)3600000 * (float)counter_cph) / (float)(millis() - startEntryThingspeak));
+        int cph = (int)(((float)3600000 * (float)counter_cph) / (float)(millis() - startEntryCPH));
+        counter_cph = 0;
+        startEntryCPH = millis();
+        lastEntryCPH += PERIOD_CPH * 1000;
+
+        // mqtt
+        if (!mqtt.connected())
+        {
+            reconnect_mqtt();
+        }
+        mqtt.loop();
+        mqtt.publish(MQTT_TOPIC_CPH, String(cph).c_str());
 
         printSerial("Average cph: ");
-        printlnSerial(String(averageCPH));
-
-        // postThingspeak(averageCPH);
-        lastEntryThingspeak += PERIOD_THINKSPEAK * 1000;
-        startEntryThingspeak = millis();
-        counter_cph = 0;
+        printlnSerial(String(cph));
     };
-    */
 
     delay(50);
 }
